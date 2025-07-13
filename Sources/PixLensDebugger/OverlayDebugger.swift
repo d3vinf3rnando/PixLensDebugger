@@ -12,7 +12,8 @@
 
 import UIKit
 
-public class OverlayDebugger {
+public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+
     public static let shared = OverlayDebugger()
     
     private static var retainedWindow: UIWindow?
@@ -88,33 +89,29 @@ public class OverlayDebugger {
     public func enableFloatingTrigger() {
         guard let scene = UIApplication.shared.connectedScenes
                 .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
-            print("❌ Could not find key window")
+              let window = scene.windows.first else {
+            print("❌ Could not find active scene or window")
             return
         }
 
-        // Prevent adding it multiple times
-        if floatingButton?.superview != nil { return }
-
-        let button = UIButton(type: .system)
-        button.setTitle("📷 Choose Image", for: .normal)
-        button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
-        button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 12
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.addTarget(self, action: #selector(openImagePicker), for: .touchUpInside)
-
-        window.addSubview(button)
+        let floatingButton = UIButton(type: .system)
+        floatingButton.translatesAutoresizingMaskIntoConstraints = false
+        floatingButton.setTitle("📷 Choose Image", for: .normal)
+        floatingButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
+        floatingButton.setTitleColor(.white, for: .normal)
+        floatingButton.layer.cornerRadius = 12
+        floatingButton.addTarget(self, action: #selector(self.pickImage), for: .touchUpInside)
+        
+        window.addSubview(floatingButton)
 
         NSLayoutConstraint.activate([
-            button.trailingAnchor.constraint(equalTo: window.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            button.bottomAnchor.constraint(equalTo: window.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            button.widthAnchor.constraint(equalToConstant: 200),
-            button.heightAnchor.constraint(equalToConstant: 50)
+            floatingButton.trailingAnchor.constraint(equalTo: window.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            floatingButton.bottomAnchor.constraint(equalTo: window.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            floatingButton.widthAnchor.constraint(equalToConstant: 200),
+            floatingButton.heightAnchor.constraint(equalToConstant: 50)
         ])
-
-        self.floatingButton = button
     }
+
 
     
     private func setupControls(in view: UIView) {
@@ -246,9 +243,32 @@ public class OverlayDebugger {
         picker.sourceType = .photoLibrary
         topVC.present(picker, animated: true)
     }
+    
+    @objc private func pickImage() {
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        picker.sourceType = .photoLibrary
+        
+        guard let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
+            print("❌ Could not find active window")
+            return
+        }
+        let screen = UIScreen.main.bounds
+        let overlayWindow = UIWindow(windowScene: scene)
+        overlayWindow.frame = screen
+        overlayWindow.windowLevel = .alert + 1
+        overlayWindow.backgroundColor = .clear
+        OverlayDebugger.retainedWindow = overlayWindow
+        }
+
+//        rootVC.present(picker, animated: true, completion: nil)
+    }
+
 
 
     
     
 
-}
+
