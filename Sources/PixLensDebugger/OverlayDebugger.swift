@@ -29,6 +29,8 @@ public class OverlayDebugger {
     private var rightButton = UIButton(type: .system)
     private var resetButton = UIButton(type: .system)
     private var closeButton = UIButton(type: .system)
+    private var floatingButton: UIButton?
+
     
     public func showOverlay(with image: UIImage) {
         print("🎯 showOverlay called")
@@ -66,8 +68,54 @@ public class OverlayDebugger {
 
         setupControls(in: controller.view)
         overlayWindow.makeKeyAndVisible()
+        floatingButton?.isHidden = true
+
         print("✅ Overlay window attached to scene")
     }
+    
+    private func topMostViewController() -> UIViewController? {
+        guard var topController = UIApplication.shared.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            return nil
+        }
+
+        while let presented = topController.presentedViewController {
+            topController = presented
+        }
+        return topController
+    }
+
+    
+    public func enableFloatingTrigger() {
+        guard let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
+            print("❌ Could not find key window")
+            return
+        }
+
+        // Prevent adding it multiple times
+        if floatingButton?.superview != nil { return }
+
+        let button = UIButton(type: .system)
+        button.setTitle("📷 Choose Image", for: .normal)
+        button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 12
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.addTarget(self, action: #selector(openImagePicker), for: .touchUpInside)
+
+        window.addSubview(button)
+
+        NSLayoutConstraint.activate([
+            button.trailingAnchor.constraint(equalTo: window.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            button.bottomAnchor.constraint(equalTo: window.safeAreaLayoutGuide.bottomAnchor, constant: -16),
+            button.widthAnchor.constraint(equalToConstant: 200),
+            button.heightAnchor.constraint(equalToConstant: 50)
+        ])
+
+        self.floatingButton = button
+    }
+
     
     private func setupControls(in view: UIView) {
         let screenWidth = UIScreen.main.bounds.width
@@ -172,6 +220,8 @@ public class OverlayDebugger {
         OverlayDebugger.retainedWindow = nil
         
         // 👇 Notify the ViewController
+        floatingButton?.isHidden = false
+
         onOverlayClosed?()
     }
     
@@ -187,6 +237,16 @@ public class OverlayDebugger {
             gesture.setTranslation(.zero, in: view.superview)
         }
     }
+    
+    @objc private func openImagePicker() {
+        guard let topVC = topMostViewController() else { return }
+
+        let picker = UIImagePickerController()
+        picker.delegate = topVC as? UIImagePickerControllerDelegate & UINavigationControllerDelegate
+        picker.sourceType = .photoLibrary
+        topVC.present(picker, animated: true)
+    }
+
 
     
     
