@@ -12,11 +12,11 @@
 
 import UIKit
 
-class OverlayDebugger {
-    static let shared = OverlayDebugger()
+public class OverlayDebugger {
+    public static let shared = OverlayDebugger()
     
     private static var retainedWindow: UIWindow?
-    var onOverlayClosed: (() -> Void)?
+    public var onOverlayClosed: (() -> Void)?
 
     private var overlayImageView = UIImageView()
     private var controlPanel = UIView()
@@ -30,7 +30,7 @@ class OverlayDebugger {
     private var resetButton = UIButton(type: .system)
     private var closeButton = UIButton(type: .system)
     
-    func showOverlay(with image: UIImage) {
+    public func showOverlay(with image: UIImage) {
         print("🎯 showOverlay called")
         
         if OverlayDebugger.retainedWindow != nil {
