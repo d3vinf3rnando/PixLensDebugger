@@ -32,15 +32,20 @@ public class PixLensDebugLauncher {
     @objc static func openImagePicker() {
         guard let windowScene = UIApplication.shared.connectedScenes
                 .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let rootVC = windowScene.windows.first?.rootViewController else {
+              let window = windowScene.windows.first else {
             print("❌ Could not open image picker")
             return
         }
 
-        let picker = UIImagePickerController()
-        picker.sourceType = .photoLibrary
-        picker.delegate = rootVC as? (UIImagePickerControllerDelegate & UINavigationControllerDelegate)
+        let tempVC = UIViewController()
+        tempVC.modalPresentationStyle = .overFullScreen
+        window.rootViewController?.present(tempVC, animated: false) {
+            let picker = UIImagePickerController()
+            picker.sourceType = .photoLibrary
+            picker.delegate = tempVC as? (UIImagePickerControllerDelegate & UINavigationControllerDelegate)
 
-        rootVC.present(picker, animated: true)
+            tempVC.present(picker, animated: true)
+        }
     }
+
 }
