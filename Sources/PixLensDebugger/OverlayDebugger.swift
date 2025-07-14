@@ -2,18 +2,11 @@
 //  OverlayDebugger.swift
 //  PixLensDebugger
 //
-//  Created by Devin Fernando on 2025-07-13.
-//
-
-//
-//  OverlayDebugger.swift
-//  PixLens
-//
 
 import UIKit
 
 public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-
+    
     public static let shared = OverlayDebugger()
     
     private static var retainedWindow: UIWindow?
@@ -30,26 +23,20 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
     private var rightButton = UIButton(type: .system)
     private var resetButton = UIButton(type: .system)
     private var closeButton = UIButton(type: .system)
-    private var floatingButton: UIButton?
-
     
     public func showOverlay(with image: UIImage) {
-        print("🎯 showOverlay called")
-        
         if OverlayDebugger.retainedWindow != nil {
-            print("⚠️ Overlay already active")
             return
         }
-
+        
         guard let scene = UIApplication.shared.connectedScenes
                 .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
             print("❌ Could not find active scene")
             return
         }
 
-        let screen = UIScreen.main.bounds
         let overlayWindow = UIWindow(windowScene: scene)
-        overlayWindow.frame = screen
+        overlayWindow.frame = UIScreen.main.bounds
         overlayWindow.windowLevel = .alert + 1
         overlayWindow.backgroundColor = .clear
         OverlayDebugger.retainedWindow = overlayWindow
@@ -57,7 +44,7 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
         let controller = UIViewController()
         overlayWindow.rootViewController = controller
 
-        overlayImageView.frame = screen
+        overlayImageView.frame = UIScreen.main.bounds
         overlayImageView.image = image
         overlayImageView.contentMode = .scaleAspectFit
         overlayImageView.alpha = 0.5
@@ -69,51 +56,8 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
 
         setupControls(in: controller.view)
         overlayWindow.makeKeyAndVisible()
-        floatingButton?.isHidden = true
-
-        print("✅ Overlay window attached to scene")
-    }
-    
-    private func topMostViewController() -> UIViewController? {
-        guard var topController = UIApplication.shared.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
-            return nil
-        }
-
-        while let presented = topController.presentedViewController {
-            topController = presented
-        }
-        return topController
     }
 
-    
-    public func enableFloatingTrigger() {
-        guard let scene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let window = scene.windows.first else {
-            print("❌ Could not find active scene or window")
-            return
-        }
-
-        let floatingButton = UIButton(type: .system)
-        floatingButton.translatesAutoresizingMaskIntoConstraints = false
-        floatingButton.setTitle("📷 Choose Image", for: .normal)
-        floatingButton.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
-        floatingButton.setTitleColor(.white, for: .normal)
-        floatingButton.layer.cornerRadius = 12
-        floatingButton.addTarget(self, action: #selector(self.pickImage), for: .touchUpInside)
-        
-        window.addSubview(floatingButton)
-
-        NSLayoutConstraint.activate([
-            floatingButton.trailingAnchor.constraint(equalTo: window.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            floatingButton.bottomAnchor.constraint(equalTo: window.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-            floatingButton.widthAnchor.constraint(equalToConstant: 200),
-            floatingButton.heightAnchor.constraint(equalToConstant: 50)
-        ])
-    }
-
-
-    
     private func setupControls(in view: UIView) {
         let screenWidth = UIScreen.main.bounds.width
         let screenHeight = UIScreen.main.bounds.height
@@ -121,22 +65,16 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
         let panelHeight: CGFloat = 220
 
         let panelX = (screenWidth - panelWidth) / 2
-        let panelY = screenHeight - panelHeight - 30 // 30pt from bottom
+        let panelY = screenHeight - panelHeight - 30
         
         let dragGesture = UIPanGestureRecognizer(target: self, action: #selector(handleControlPanelDrag(_:)))
         controlPanel.addGestureRecognizer(dragGesture)
 
-
         controlPanel.frame = CGRect(x: panelX, y: panelY, width: panelWidth, height: panelHeight)
-
         controlPanel.backgroundColor = UIColor(white: 1.0, alpha: 0.9)
         controlPanel.layer.cornerRadius = 12
-        controlPanel.layer.shadowColor = UIColor.black.cgColor
-        controlPanel.layer.shadowOpacity = 0.1
-        controlPanel.layer.shadowOffset = CGSize(width: 0, height: 2)
-        controlPanel.layer.shadowRadius = 4
         view.addSubview(controlPanel)
-        
+
         opacitySlider.frame = CGRect(x: 10, y: 10, width: 200, height: 30)
         opacitySlider.minimumValue = 0.0
         opacitySlider.maximumValue = 1.0
@@ -205,70 +143,23 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
     @objc private func moveRight() { overlayImageView.frame.origin.x += 1 }
 
     @objc private func resetOverlay() {
-        print("🔁 Resetting overlay position...")
         UIView.animate(withDuration: 0.2) {
             self.overlayImageView.frame = UIScreen.main.bounds
         }
     }
 
     @objc private func closeOverlay() {
-        print("❌ Overlay closed")
         OverlayDebugger.retainedWindow?.isHidden = true
         OverlayDebugger.retainedWindow = nil
-        
-        // 👇 Notify the ViewController
-        floatingButton?.isHidden = false
-
         onOverlayClosed?()
     }
-    
+
     @objc private func handleControlPanelDrag(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view else { return }
         let translation = gesture.translation(in: view.superview)
-
         if gesture.state == .changed || gesture.state == .ended {
-            view.center = CGPoint(
-                x: view.center.x + translation.x,
-                y: view.center.y + translation.y
-            )
+            view.center = CGPoint(x: view.center.x + translation.x, y: view.center.y + translation.y)
             gesture.setTranslation(.zero, in: view.superview)
         }
     }
-    
-    @objc private func openImagePicker() {
-        guard let topVC = topMostViewController() else { return }
-
-        let picker = UIImagePickerController()
-        picker.delegate = topVC as? UIImagePickerControllerDelegate & UINavigationControllerDelegate
-        picker.sourceType = .photoLibrary
-        topVC.present(picker, animated: true)
-    }
-    
-    @objc private func pickImage() {
-        let picker = UIImagePickerController()
-        picker.delegate = self
-        picker.sourceType = .photoLibrary
-        
-        guard let scene = UIApplication.shared.connectedScenes
-                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
-            print("❌ Could not find active window")
-            return
-        }
-        let screen = UIScreen.main.bounds
-        let overlayWindow = UIWindow(windowScene: scene)
-        overlayWindow.frame = screen
-        overlayWindow.windowLevel = .alert + 1
-        overlayWindow.backgroundColor = .clear
-        OverlayDebugger.retainedWindow = overlayWindow
-        }
-
-//        rootVC.present(picker, animated: true, completion: nil)
-    }
-
-
-
-    
-    
-
-
+}
