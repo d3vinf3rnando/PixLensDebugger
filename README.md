@@ -19,6 +19,15 @@
 
 ---
 
+## 🎬 Video Guide
+
+
+
+https://github.com/user-attachments/assets/8a3a9306-5def-4a41-b536-d03ed4530b0e
+
+
+---
+
 ## 📦 Installation
 
 Add `PixLensDebugger` via **Swift Package Manager**:
