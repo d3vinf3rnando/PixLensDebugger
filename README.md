@@ -1,4 +1,5 @@
-<img width="5160" height="1024" alt="PixLensDebuggerBanner" src="https://github.com/user-attachments/assets/ef5b7288-c075-4276-9a46-a973bdd31fdc" />
+
+<img width="5160" height="1024" alt="PixLensDebuggerBanner" src="https://github.com/user-attachments/assets/2abd5e40-4038-46b1-862f-0b239e1a266a" />
 
 
 ---
@@ -33,63 +34,101 @@ Add `PixLensDebugger` via **Swift Package Manager**:
 
 > ❗️This package requires minimal manual setup inside your app — giving full flexibility.
 
-### Step 1: Import in Your ViewController
+### Step 1: Import into Your ViewController
 
 swift
 ```import PixLensDebugger```
 
-### Step 2: Enable Floating Button (Debug-only)
+### Step 2: Add Floating Button Setup to Your ViewController
+```
+ private let floatingButton = UIButton(type: .system)
+```
+
+### Step 3: Enable Floating Button (Debug-only)
 Add the following to your root ViewController.swift:
 
 ```
-#if DEBUG
-override func viewDidLoad() {
-    super.viewDidLoad()
-    setupFloatingButton()
-}
-#endif
+override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        #if DEBUG
+        setupFloatingButton()
+        #endif
+       
+    }
+
 
 private func setupFloatingButton() {
-    let button = UIButton(type: .system)
-    button.setTitle("📷 Choose Image", for: .normal)
-    button.backgroundColor = UIColor.systemBlue.withAlphaComponent(0.9)
-    button.setTitleColor(.white, for: .normal)
-    button.layer.cornerRadius = 12
-    button.translatesAutoresizingMaskIntoConstraints = false
-    button.addTarget(self, action: #selector(openImagePicker), for: .touchUpInside)
-    view.addSubview(button)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self,
+                  let windowScene = UIApplication.shared.connectedScenes
+                      .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
+                print("❌ Could not find key window")
+                return
+            }
 
-    NSLayoutConstraint.activate([
-        button.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-        button.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16),
-        button.widthAnchor.constraint(equalToConstant: 200),
-        button.heightAnchor.constraint(equalToConstant: 50)
-    ])
-}
+            // Avoid duplicates
+            if window.subviews.contains(self.floatingButton) { return }
+
+            self.floatingButton.setTitle("📷 Choose Image", for: .normal)
+            self.floatingButton.backgroundColor = UIColor(red: 0.203, green: 0.471, blue: 0.965, alpha: 1.0)
+
+
+            self.floatingButton.setTitleColor(.white, for: .normal)
+            self.floatingButton.layer.cornerRadius = 12
+            self.floatingButton.frame = CGRect(x: window.bounds.width - 220, y: window.bounds.height - 120, width: 200, height: 50)
+            self.floatingButton.autoresizingMask = [.flexibleLeftMargin, .flexibleTopMargin]
+            self.floatingButton.addTarget(self, action: #selector(self.openImagePicker), for: .touchUpInside)
+
+            let panGesture = UIPanGestureRecognizer(target: self, action: #selector(self.handleDrag(_:)))
+            self.floatingButton.addGestureRecognizer(panGesture)
+
+            window.addSubview(self.floatingButton)
+            window.bringSubviewToFront(self.floatingButton)
+            print("✅ Floating button added to window")
+        }
+    }
+
 
 ```
 
-###  Step 3: Open Image Picker and Show Overlay
+###  Step 4: Open Image Picker and Show Overlay
 Add this to your ViewController:
 ```
-@objc func openImagePicker() {
-    let picker = UIImagePickerController()
-    picker.delegate = self
-    picker.sourceType = .photoLibrary
-    present(picker, animated: true)
-}
-
-func imagePickerController(_ picker: UIImagePickerController,
-                           didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-    picker.dismiss(animated: true)
-    if let selectedImage = info[.originalImage] as? UIImage {
-        OverlayDebugger.shared.showOverlay(with: selectedImage)
+    @objc private func openImagePicker() {
+            let picker = UIImagePickerController()
+            picker.delegate = self
+            picker.sourceType = .photoLibrary
+            present(picker, animated: true)
+        }
+    
+    @objc func handleDrag(_ gesture: UIPanGestureRecognizer) {
+        let translation = gesture.translation(in: view)
+        if let gestureView = gesture.view {
+            gestureView.center = CGPoint(x: gestureView.center.x + translation.x,
+                                         y: gestureView.center.y + translation.y)
+        }
+        gesture.setTranslation(.zero, in: view)
     }
-}
 
-func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-    picker.dismiss(animated: true)
-}
+    
+    func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            picker.dismiss(animated: true)
+
+            if let selectedImage = info[.originalImage] as? UIImage {
+                OverlayDebugger.shared.showOverlay(with: selectedImage)
+                OverlayDebugger.shared.onOverlayClosed = { [weak self] in
+                    self?.floatingButton.isHidden = false
+                }
+                floatingButton.isHidden = true
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
 ```
 ---
 
