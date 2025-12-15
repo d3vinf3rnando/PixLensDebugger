@@ -24,6 +24,49 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
     private var resetButton = UIButton(type: .system)
     private var closeButton = UIButton(type: .system)
     
+    
+    //15th dec update
+    public func enableFloatingButton() {
+        guard let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
+            return
+        }
+
+        let button = UIButton(type: .system)
+        button.setTitle("📷 Choose Image", for: .normal)
+        button.backgroundColor = UIColor(
+            red: 52/255, green: 120/255, blue: 246/255, alpha: 1.0
+        )
+        button.setTitleColor(.white, for: .normal)
+        button.layer.cornerRadius = 12
+        button.frame = CGRect(
+            x: window.bounds.width - 220,
+            y: window.bounds.height - 120,
+            width: 200,
+            height: 50
+        )
+        button.autoresizingMask = [.flexibleLeftMargin, .flexibleTopMargin]
+        button.addTarget(self, action: #selector(openImagePickerFromDebugger), for: .touchUpInside)
+
+        window.addSubview(button)
+    }
+    
+    public func imagePickerController(
+        _ picker: UIImagePickerController,
+        didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
+    ) {
+        picker.dismiss(animated: true)
+
+        if let image = info[.originalImage] as? UIImage {
+            showOverlay(with: image)
+        }
+    }
+
+
+    
+    //---
+    
     public func showOverlay(with image: UIImage) {
         if OverlayDebugger.retainedWindow != nil {
             return
@@ -136,6 +179,7 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
             gesture.setTranslation(.zero, in: overlayImageView.superview)
         }
     }
+    
 
     @objc private func moveUp() { overlayImageView.frame.origin.y -= 1 }
     @objc private func moveDown() { overlayImageView.frame.origin.y += 1 }
@@ -147,12 +191,39 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
             self.overlayImageView.frame = UIScreen.main.bounds
         }
     }
+    
+    private func topMostViewController() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else {
+            return nil
+        }
+
+        var top = root
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+        return top
+    }
+
 
     @objc private func closeOverlay() {
         OverlayDebugger.retainedWindow?.isHidden = true
         OverlayDebugger.retainedWindow = nil
         onOverlayClosed?()
     }
+    
+    //15th dec update
+    @objc private func openImagePickerFromDebugger() {
+        guard let topVC = topMostViewController() else { return }
+
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        picker.sourceType = .photoLibrary
+        topVC.present(picker, animated: true)
+    }
+
+    //---
 
     @objc private func handleControlPanelDrag(_ gesture: UIPanGestureRecognizer) {
         guard let view = gesture.view else { return }
