@@ -24,6 +24,14 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
     private var resetButton = UIButton(type: .system)
     private var closeButton = UIButton(type: .system)
     
+    //image scaling
+    private var scaleSlider = UISlider()
+    private var currentScale: CGFloat = 1.0
+
+    private let minScale: CGFloat = 0.2
+    private let maxScale: CGFloat = 3.0
+
+    
     
     //15th dec update
     public func enableFloatingButton() {
@@ -124,6 +132,30 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
         opacitySlider.value = 0.5
         opacitySlider.addTarget(self, action: #selector(opacityChanged), for: .valueChanged)
         controlPanel.addSubview(opacitySlider)
+        
+        //scale slider
+        // ➖ Button
+        let shrinkButton = UIButton(type: .system)
+        shrinkButton.frame = CGRect(x: 10, y: 50, width: 30, height: 30)
+        shrinkButton.setTitle("➖", for: .normal)
+        shrinkButton.addTarget(self, action: #selector(decreaseScale), for: .touchUpInside)
+        controlPanel.addSubview(shrinkButton)
+
+        // Slider
+        scaleSlider.frame = CGRect(x: 45, y: 50, width: 180, height: 30)
+        scaleSlider.minimumValue = Float(minScale)
+        scaleSlider.maximumValue = Float(maxScale)
+        scaleSlider.value = Float(currentScale)
+        scaleSlider.addTarget(self, action: #selector(scaleChanged), for: .valueChanged)
+        controlPanel.addSubview(scaleSlider)
+
+        // ➕ Button
+        let enlargeButton = UIButton(type: .system)
+        enlargeButton.frame = CGRect(x: 230, y: 50, width: 30, height: 30)
+        enlargeButton.setTitle("➕", for: .normal)
+        enlargeButton.addTarget(self, action: #selector(increaseScale), for: .touchUpInside)
+        controlPanel.addSubview(enlargeButton)
+
 
         toggleButton.frame = CGRect(x: 215, y: 10, width: 50, height: 30)
         toggleButton.setTitle("Hide", for: .normal)
@@ -180,6 +212,29 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
         }
     }
     
+    
+    //slider
+    @objc private func scaleChanged() {
+        currentScale = CGFloat(scaleSlider.value)
+        applyScale()
+    }
+
+    @objc private func increaseScale() {
+        currentScale = min(currentScale + 0.1, maxScale)
+        scaleSlider.value = Float(currentScale)
+        applyScale()
+    }
+
+    @objc private func decreaseScale() {
+        currentScale = max(currentScale - 0.1, minScale)
+        scaleSlider.value = Float(currentScale)
+        applyScale()
+    }
+    private func applyScale() {
+        overlayImageView.transform = CGAffineTransform(scaleX: currentScale, y: currentScale)
+    }
+
+    
 
     @objc private func moveUp() { overlayImageView.frame.origin.y -= 1 }
     @objc private func moveDown() { overlayImageView.frame.origin.y += 1 }
@@ -187,10 +242,15 @@ public class OverlayDebugger: NSObject, UIImagePickerControllerDelegate, UINavig
     @objc private func moveRight() { overlayImageView.frame.origin.x += 1 }
 
     @objc private func resetOverlay() {
+        currentScale = 1.0
+        scaleSlider.value = 1.0
+        
         UIView.animate(withDuration: 0.2) {
+            self.overlayImageView.transform = .identity
             self.overlayImageView.frame = UIScreen.main.bounds
         }
     }
+
     
     private func topMostViewController() -> UIViewController? {
         guard let scene = UIApplication.shared.connectedScenes
